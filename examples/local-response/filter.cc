@@ -14,6 +14,9 @@ public:
 
   bool onStart(size_t) override;
 
+  void onTick() override;
+
+  uint32_t held_context_id_;
   std::string header_name_;
   std::string header_value_;
 };
@@ -24,11 +27,9 @@ public:
       : Context(id, root),
         root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
 
-  void onCreate() override;
-  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
-  FilterDataStatus onRequestBody(size_t body_buffer_length,
-                                 bool end_of_stream) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
+  FilterHeadersStatus onResponseTrailers(uint32_t trailers) override;
+
   void onDone() override;
   void onLog() override;
   void onDelete() override;
@@ -63,28 +64,24 @@ bool AddHeaderRootContext::onStart(size_t) {
   return true;
 }
 
-void AddHeaderContext::onCreate() {
-  LOG_DEBUG(std::string("onCreate " + std::to_string(id())));
-}
-
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
-  HeaderStringPairs additional_header_string_pairs;
-  sendLocalResponse(200, "success", "hello world",
-                    additional_header_string_pairs);
-  return FilterHeadersStatus::Continue;
+void AddHeaderRootContext::onTick() {
+  if (getContext(held_context_id_) != nullptr) {
+    proxy_set_effective_context(held_context_id_);
+    continueResponse();
+  }
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
-  addResponseHeader(root_->header_name_, root_->header_value_);
-  replaceResponseHeader("location", "envoy-wasm");
+  addResponseHeader("hello", "world");
   return FilterHeadersStatus::Continue;
 }
 
-FilterDataStatus AddHeaderContext::onRequestBody(size_t body_buffer_length,
-                                                 bool end_of_stream) {
-  return FilterDataStatus::Continue;
+FilterHeadersStatus AddHeaderContext::onResponseTrailers(uint32_t) {
+  uint32_t current_id = id();
+  root_->held_context_id_ = current_id;
+  proxy_set_tick_period_milliseconds(5000);
+  return FilterHeadersStatus::StopIteration;
 }
 
 void AddHeaderContext::onDone() {
