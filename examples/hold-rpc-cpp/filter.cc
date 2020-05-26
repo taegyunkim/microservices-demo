@@ -12,8 +12,6 @@ public:
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
 
-  bool onStart(size_t) override;
-
   void onTick() override;
 
   uint32_t held_context_id_;
@@ -29,11 +27,6 @@ public:
 
   FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
-  FilterTrailersStatus onResponseTrailers(uint32_t trailers) override;
-
-  void onDone() override;
-  void onLog() override;
-  void onDelete() override;
 
 private:
   AddHeaderRootContext *root_;
@@ -61,11 +54,6 @@ bool AddHeaderRootContext::onConfigure(size_t) {
   return true;
 }
 
-bool AddHeaderRootContext::onStart(size_t) {
-  LOG_DEBUG("onStart");
-  return true;
-}
-
 void AddHeaderRootContext::onTick() {
   if (getContext(held_context_id_) != nullptr) {
     proxy_set_effective_context(held_context_id_);
@@ -74,6 +62,15 @@ void AddHeaderRootContext::onTick() {
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
+  auto result = getRequestHeaderPairs();
+  auto pairs = result->pairs();
+  LOG_DEBUG(std::string("headers: ") + std::to_string(pairs.size()));
+  for (auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+             std::string(p.second));
+  }
+
   auto value = getRequestHeader("hold_rpc");
   if (!value.get()) {
     return FilterHeadersStatus::Continue;
@@ -88,23 +85,6 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
   addResponseHeader("hello", "world");
   return FilterHeadersStatus::Continue;
-}
-
-FilterTrailersStatus AddHeaderContext::onResponseTrailers(uint32_t) {
-  return FilterTrailersStatus::Continue;
-}
-
-void AddHeaderContext::onDone() {
-  LOG_DEBUG(std::string("onDone " + std::to_string(id())));
-}
-
-void AddHeaderContext::onLog() {
-  LOG_DEBUG(std::string("onLog " + std::to_string(id())));
-}
-
-void AddHeaderContext::onDelete() {
-  LOG_DEBUG(std::string("onDelete " + std::to_string(id())));
 }
