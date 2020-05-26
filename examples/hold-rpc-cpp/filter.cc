@@ -16,11 +16,9 @@ public:
 
   void onTick() override;
 
+  uint32_t held_context_id_;
   std::string header_name_;
   std::string header_value_;
-  WasmDataPtr headers_;
-  WasmDataPtr body_;
-  WasmDataPtr trailers_;
 };
 
 class AddHeaderContext : public Context {
@@ -29,14 +27,9 @@ public:
       : Context(id, root),
         root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
 
-  void onCreate() override;
-  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
-  FilterDataStatus onRequestBody(size_t body_buffer_length,
-                                 bool end_of_stream) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
-  FilterDataStatus onResponseBody(size_t body_buffer_lengt,
-                                  bool end_of_stream) override;
   FilterTrailersStatus onResponseTrailers(uint32_t trailers) override;
+
   void onDone() override;
   void onLog() override;
   void onDelete() override;
@@ -73,46 +66,23 @@ bool AddHeaderRootContext::onStart(size_t) {
 
 void AddHeaderRootContext::onTick() {
   proxy_set_tick_period_milliseconds(0);
-
-  HeaderStringPairs additional_headers;
-  sendLocalResponse(200, "success", body_->view(), additional_headers);
-}
-
-void AddHeaderContext::onCreate() {
-  LOG_DEBUG(std::string("onCreate " + std::to_string(id())));
-}
-
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
-  return FilterHeadersStatus::Continue;
+  if (getContext(held_context_id_) != nullptr) {
+    proxy_set_effective_context(held_context_id_);
+    continueResponse();
+  }
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
   addResponseHeader("hello", "world");
-
-  root_->headers_ = getResponseHeaderPairs();
   return FilterHeadersStatus::Continue;
 }
 
-FilterDataStatus AddHeaderContext::onRequestBody(size_t body_buffer_length,
-                                                 bool end_of_stream) {
-  return FilterDataStatus::Continue;
-}
-
-FilterDataStatus AddHeaderContext::onResponseBody(size_t body_buffer_length,
-                                                  bool end_of_stream) {
-  root_->body_ =
-      getBufferBytes(BufferType::HttpResponseBody, 0, body_buffer_length);
-  return FilterDataStatus::Continue;
-}
-
-FilterTrailersStatus AddHeaderContext::onResponseTrailers(uint32_t trailers) {
-  root_->trailers_ = getResponseTrailerPairs();
-  proxy_set_effective_context(root_->id());
+FilterTrailersStatus AddHeaderContext::onResponseTrailers(uint32_t) {
+  uint32_t current_id = id();
+  root_->held_context_id_ = current_id;
   proxy_set_tick_period_milliseconds(5000);
-  proxy_set_effective_context(id());
-  return FilterTrailersStatus::Continue;
+  return FilterTrailersStatus::StopIteration;
 }
 
 void AddHeaderContext::onDone() {
