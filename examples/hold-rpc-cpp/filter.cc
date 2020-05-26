@@ -27,6 +27,7 @@ public:
       : Context(id, root),
         root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
 
+  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
   FilterTrailersStatus onResponseTrailers(uint32_t trailers) override;
 
@@ -36,6 +37,7 @@ public:
 
 private:
   AddHeaderRootContext *root_;
+  bool hold_rpc_;
 };
 static RegisterContextFactory
     register_AddHeaderContext(CONTEXT_FACTORY(AddHeaderContext),
@@ -65,11 +67,24 @@ bool AddHeaderRootContext::onStart(size_t) {
 }
 
 void AddHeaderRootContext::onTick() {
-  proxy_set_tick_period_milliseconds(0);
   if (getContext(held_context_id_) != nullptr) {
     proxy_set_effective_context(held_context_id_);
     continueResponse();
   }
+}
+
+FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  auto value = getRequestHeader("hold_rpc");
+  if (!value.get()) {
+    return FilterHeadersStatus::Continue;
+  }
+  if (value->view() == "1") {
+    uint32_t current_id = id();
+    root_->held_context_id_ = current_id;
+    proxy_set_tick_period_milliseconds(5000);
+    FilterHeadersStatus::StopIteration;
+  }
+  return FilterHeadersStatus::Continue;
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
@@ -79,10 +94,7 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
 }
 
 FilterTrailersStatus AddHeaderContext::onResponseTrailers(uint32_t) {
-  uint32_t current_id = id();
-  root_->held_context_id_ = current_id;
-  proxy_set_tick_period_milliseconds(5000);
-  return FilterTrailersStatus::StopIteration;
+  return FilterTrailersStatus::Continue;
 }
 
 void AddHeaderContext::onDone() {
