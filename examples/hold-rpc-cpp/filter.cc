@@ -55,31 +55,34 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 }
 
 void AddHeaderRootContext::onTick() {
+  // Calling this function with 0 will disable the installed timer.
+  proxy_set_tick_period_milliseconds(0);
+  // if getContext returns a nullptr, then it means the Context* has been
+  // deleted because the connection was closed.
   if (getContext(held_context_id_) != nullptr) {
     proxy_set_effective_context(held_context_id_);
-    continueResponse();
+    // Since we returned StopIteration from the onRequestHeaders, call
+    // continueRequest. If it were from onResponse*, should call
+    // continueResponse
+    continueRequest();
   }
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
-  auto result = getRequestHeaderPairs();
-  auto pairs = result->pairs();
-  LOG_DEBUG(std::string("headers: ") + std::to_string(pairs.size()));
-  for (auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
-             std::string(p.second));
-  }
-
-  auto value = getRequestHeader("hold_rpc");
+  // Custom headers start with x- prefix.
+  auto value = getRequestHeader("x-hold_rpc");
   if (!value.get()) {
+    // To enable debug logging
+    // kubectl exec <pod> -c istio-proxy -- curl -X POST /logging?wasm=debug
+    LOG_DEBUG("No x-hold_rpc header");
     return FilterHeadersStatus::Continue;
   }
   if (value->view() == "1") {
     uint32_t current_id = id();
+    // Save current context_id to later continue the request.
     root_->held_context_id_ = current_id;
     proxy_set_tick_period_milliseconds(5000);
-    FilterHeadersStatus::StopIteration;
+    return FilterHeadersStatus::StopIteration;
   }
   return FilterHeadersStatus::Continue;
 }
