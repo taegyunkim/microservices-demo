@@ -80,6 +80,7 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
     methods += method;
   }
   addResponseHeader("methods", methods);
+  LOG_DEBUG("methods: " + methods);
   return FilterHeadersStatus::Continue;
 }
 
