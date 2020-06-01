@@ -76,10 +76,12 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
   addResponseHeader("hello", "world");
   std::string methods;
+  LOG_DEBUG("Num elements in methods variable: " +
+            std::to_string(root_->methods_.size()));
   for (const auto &method : root_->methods_) {
     methods += method;
   }
-  addResponseHeader("methods", methods);
+  replaceResponseHeader("methods", methods);
   LOG_DEBUG("methods: " + methods);
   return FilterHeadersStatus::Continue;
 }
