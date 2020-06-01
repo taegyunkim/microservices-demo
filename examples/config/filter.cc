@@ -50,7 +50,10 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 
   google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
                                               options);
-  LOG_DEBUG("onConfigure methods " + config.methods());
+  for (const auto &method : config.methods()) {
+    LOG_DEBUG("onConfigure methods " + method);
+    methods_.push_back(method);
+  }
   return true;
 }
 
