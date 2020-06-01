@@ -1,6 +1,7 @@
 // NOLINT(namespace-envoy)
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "filter.pb.h"
 #include "google/protobuf/util/json_util.h"
@@ -13,6 +14,8 @@ public:
   bool onConfigure(size_t /* configuration_size */) override;
 
   bool onStart(size_t) override;
+
+  std::vector<std::string> methods_;
 };
 
 class AddHeaderContext : public Context {
@@ -48,6 +51,10 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 
   google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
                                               options);
+  for (const auto &method : config.methods()) {
+    LOG_DEBUG(method);
+    methods_.push_back(method);
+  }
   return true;
 }
 
@@ -68,6 +75,11 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
   addResponseHeader("hello", "world");
+  std::string methods;
+  for (const auto &method : root_->methods_) {
+    methods += method;
+  }
+  addResponseHeader("methods", methods);
   return FilterHeadersStatus::Continue;
 }
 
