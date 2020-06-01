@@ -29,5 +29,5 @@ TEST(FilterTest, ParseMultiple) {
 
   ASSERT_EQ(config.methods().size(), 2);
   EXPECT_EQ(config.methods(0), "GET");
-  EXPECT_EQ(config.methods(1), "SET");
+  EXPECT_EQ(config.methods(1), "POST");
 }
