@@ -13,8 +13,6 @@ public:
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
 
-  bool onStart(size_t) override;
-
   std::vector<std::string> methods_;
 };
 
@@ -24,14 +22,7 @@ public:
       : Context(id, root),
         root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
 
-  void onCreate() override;
-  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
-  FilterDataStatus onRequestBody(size_t body_buffer_length,
-                                 bool end_of_stream) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
-  void onDone() override;
-  void onLog() override;
-  void onDelete() override;
 
 private:
   AddHeaderRootContext *root_;
@@ -62,20 +53,6 @@ bool AddHeaderRootContext::onConfigure(size_t) {
   return true;
 }
 
-bool AddHeaderRootContext::onStart(size_t) {
-  LOG_DEBUG("onStart");
-  return true;
-}
-
-void AddHeaderContext::onCreate() {
-  LOG_DEBUG(std::string("onCreate " + std::to_string(id())));
-}
-
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
-  return FilterHeadersStatus::Continue;
-}
-
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
   addResponseHeader("hello", "world");
@@ -88,21 +65,4 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   replaceResponseHeader("methods", methods);
   LOG_DEBUG("methods: " + methods);
   return FilterHeadersStatus::Continue;
-}
-
-FilterDataStatus AddHeaderContext::onRequestBody(size_t body_buffer_length,
-                                                 bool end_of_stream) {
-  return FilterDataStatus::Continue;
-}
-
-void AddHeaderContext::onDone() {
-  LOG_DEBUG(std::string("onDone " + std::to_string(id())));
-}
-
-void AddHeaderContext::onLog() {
-  LOG_DEBUG(std::string("onLog " + std::to_string(id())));
-}
-
-void AddHeaderContext::onDelete() {
-  LOG_DEBUG(std::string("onDelete " + std::to_string(id())));
 }
