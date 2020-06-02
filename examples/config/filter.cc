@@ -51,9 +51,13 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 
   google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
                                               options);
-  for (const auto &method : config.methods()) {
-    LOG_DEBUG(method);
-    methods_.push_back(method);
+  // NOTE(taegyun): This function seems to be called multiple times, so populate
+  // methods_ just once.
+  if (methods_.empty()) {
+    for (const auto &method : config.methods()) {
+      LOG_DEBUG(method);
+      methods_.push_back(method);
+    }
   }
   return true;
 }
