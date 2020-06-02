@@ -15,7 +15,7 @@ public:
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
 
-  std::vector<std::pair<std::string, std::regex>> header_regexes_;
+  std::vector<std::pair<std::string, std::string>> header_regexes_;
 };
 
 class AddHeaderContext : public Context {
@@ -50,7 +50,7 @@ bool AddHeaderRootContext::onConfigure(size_t) {
   if (header_regexes_.empty()) {
     for (const auto &header : config.headers()) {
       header_regexes_.push_back(
-          std::make_pair(header.name(), std::regex(header.value_regex())));
+          std::make_pair(header.name(), header.value_regex()));
     }
   }
   return true;
@@ -61,10 +61,15 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
     auto value = getRequestHeader(header_regex.first);
     if (value != nullptr) {
       const auto &regex = header_regex.second;
-      if (std::regex_search(value->data(), regex)) {
+      if (std::regex_search(value->data(), std::regex(regex))) {
         addRequestHeader("x-envoy-force-trace", "true");
+        LOG_DEBUG("Added request header, x-envoy-force-trace");
         break;
+      } else {
+        LOG_DEBUG("Pattern: " + regex + ", value: " + value->toString());
       }
+    } else {
+      LOG_DEBUG("Didn't find header " + header_regex.first);
     }
   }
 

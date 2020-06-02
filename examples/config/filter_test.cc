@@ -41,4 +41,5 @@ TEST(FilterTest, ParseMultiple) {
 
 TEST(FilterText, RegexMatch) {
   ASSERT_TRUE(std::regex_search("curl/7.64.1", std::regex("curl")));
+  ASSERT_TRUE(std::regex_search("true", std::regex("true")));
 }
