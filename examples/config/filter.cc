@@ -1,6 +1,8 @@
 // NOLINT(namespace-envoy)
+#include <regex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "filter.pb.h"
@@ -13,7 +15,7 @@ public:
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
 
-  std::vector<std::string> methods_;
+  std::vector<std::pair<std::string, std::regex>> header_regexes_;
 };
 
 class AddHeaderContext : public Context {
@@ -22,6 +24,7 @@ public:
       : Context(id, root),
         root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
 
+  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
 
 private:
@@ -43,26 +46,34 @@ bool AddHeaderRootContext::onConfigure(size_t) {
   google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
                                               options);
   // NOTE(taegyun): This function seems to be called multiple times, so populate
-  // methods_ just once.
-  if (methods_.empty()) {
-    for (const auto &method : config.methods()) {
-      LOG_DEBUG(method);
-      methods_.push_back(method);
+  // header_regexes just once.
+  if (header_regexes_.empty()) {
+    for (const auto &header : config.headers()) {
+      header_regexes_.push_back(
+          std::make_pair(header.name(), std::regex(header.value_regex())));
     }
   }
   return true;
 }
 
-FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
-  addResponseHeader("hello", "world");
-  std::string methods;
-  LOG_DEBUG("Num elements in methods variable: " +
-            std::to_string(root_->methods_.size()));
-  for (const auto &method : root_->methods_) {
-    methods += method;
+FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  for (const auto &header_regex : root_->header_regexes_) {
+    auto value = getRequestHeader(header_regex.first);
+    if (value != nullptr) {
+      const auto &regex = header_regex.second;
+      if (std::regex_match(value->data(), regex)) {
+        addRequestHeader("x-envoy-force-trace", "true");
+        break;
+      }
+    }
   }
-  replaceResponseHeader("methods", methods);
-  LOG_DEBUG("methods: " + methods);
+
+  return FilterHeadersStatus::Continue;
+}
+
+FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
+  // Sanity check this filter is installed and running.
+  addResponseHeader("hello", "world");
+
   return FilterHeadersStatus::Continue;
 }
