@@ -61,7 +61,7 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
     auto value = getRequestHeader(header_regex.first);
     if (value != nullptr) {
       const auto &regex = header_regex.second;
-      if (std::regex_match(value->data(), regex)) {
+      if (std::regex_search(value->data(), regex)) {
         addRequestHeader("x-envoy-force-trace", "true");
         break;
       }
