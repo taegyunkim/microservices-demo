@@ -1,4 +1,5 @@
 // NOLINT(namespace-envoy)
+#include <cstdlib>
 #include <regex>
 #include <string>
 #include <unordered_map>
@@ -57,12 +58,17 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  if (getRequestHeader("x-tagged")->data() != nullptr) {
+    LOG_DEBUG("Already tagged");
+    return FilterHeadersStatus::Continue;
+  }
   for (const auto &header_regex : root_->header_regexes_) {
     auto value = getRequestHeader(header_regex.first);
-    if (value != nullptr) {
+    if (value->data() != nullptr) {
       const auto &regex = header_regex.second;
       if (std::regex_search(value->data(), std::regex(regex))) {
         addRequestHeader("x-envoy-force-trace", "true");
+        addRequestHeader("x-tagged", "true");
         LOG_DEBUG("Added request header, x-envoy-force-trace");
         break;
       } else {
