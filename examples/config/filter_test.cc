@@ -11,11 +11,14 @@ TEST(FilterTest, ParseSingleMethod) {
   google::protobuf::util::JsonParseOptions options;
   options.case_insensitive_enum_parsing = true;
   options.ignore_unknown_fields = false;
-  google::protobuf::util::JsonStringToMessage("{\"methods\": \"GET\"}", &config,
-                                              options);
+  google::protobuf::util::JsonStringToMessage(
+      "{\"headers\": [ {\"name\": \"content-type\", \"value_regex\": \"text\" "
+      "} ] }",
+      &config, options);
 
-  ASSERT_EQ(config.methods().size(), 1);
-  EXPECT_EQ(config.methods(0), "GET");
+  ASSERT_EQ(config.headers().size(), 1);
+  EXPECT_EQ(config.headers(0).name(), "content-type");
+  EXPECT_EQ(config.headers(0).value_regex(), "text");
 }
 
 TEST(FilterTest, ParseMultiple) {
@@ -25,9 +28,11 @@ TEST(FilterTest, ParseMultiple) {
   options.case_insensitive_enum_parsing = true;
   options.ignore_unknown_fields = false;
   google::protobuf::util::JsonStringToMessage(
-      "{\"methods\": [\"GET\", \"POST\"] }", &config, options);
+      "{\"headers\": [ {\"name\": \"content-type\", \"value_regex\": \"text\" "
+      "}, {\"name\": \"user-agent\", \"value_regex\": \"curl\"}] }",
+      &config, options);
 
-  ASSERT_EQ(config.methods().size(), 2);
-  EXPECT_EQ(config.methods(0), "GET");
-  EXPECT_EQ(config.methods(1), "POST");
+  ASSERT_EQ(config.headers().size(), 2);
+  EXPECT_EQ(config.headers(1).name(), "user-agent");
+  EXPECT_EQ(config.headers(1).value_regex(), "curl");
 }
