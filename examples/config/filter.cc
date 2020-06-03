@@ -68,10 +68,9 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
     if (value->data() != nullptr && value->size() > 0) {
       const auto &regex = header_regex.second;
       if (std::regex_search(value->data(), std::regex(regex))) {
-        addRequestHeader("x-envoy-force-trace", "true");
         addRequestHeader("x-tagged", "true");
         replaceRequestHeader("x-b3-sampled", "1");
-        LOG_DEBUG("Added request header, x-envoy-force-trace");
+        LOG_DEBUG("Set x-b3-sampled to 1.");
         break;
       } else {
         LOG_DEBUG("Pattern: " + regex + ", value: " + value->toString());
