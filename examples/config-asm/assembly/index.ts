@@ -39,6 +39,7 @@ class AddHeader extends Context {
     return FilterHeadersStatusValues.Continue;
   }
   onResponseHeaders(a: u32): FilterHeadersStatusValues {
+    stream_context.headers.response.add("hello", "world");
     let headers = stream_context.headers.response.get_headers();
     for (let i = 0; i < headers.length; ++i) {
       log(
