@@ -58,13 +58,6 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  auto result = getRequestHeaderPairs();
-  auto pairs = result->pairs();
-  for (const auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
-              std::string(p.second));
-  }
-
   auto tagged = getRequestHeader("x-tagged");
   if (tagged->data() != nullptr && tagged->size() > 0) {
     LOG_DEBUG("Already tagged");
@@ -86,6 +79,13 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
     } else {
       LOG_DEBUG("Didn't find header " + header_regex.first);
     }
+  }
+
+  auto result = getRequestHeaderPairs();
+  auto pairs = result->pairs();
+  for (const auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
   }
 
   return FilterHeadersStatus::Continue;
