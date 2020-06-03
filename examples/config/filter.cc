@@ -58,17 +58,26 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  if (getRequestHeader("x-tagged")->data() != nullptr) {
+  auto result = getRequestHeaderPairs();
+  auto pairs = result->pairs();
+  for (const auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+  }
+
+  auto tagged = getRequestHeader("x-tagged");
+  if (tagged->data() != nullptr && tagged->size() > 0) {
     LOG_DEBUG("Already tagged");
     return FilterHeadersStatus::Continue;
   }
   for (const auto &header_regex : root_->header_regexes_) {
     auto value = getRequestHeader(header_regex.first);
-    if (value->data() != nullptr) {
+    if (value->data() != nullptr && value->size() > 0) {
       const auto &regex = header_regex.second;
       if (std::regex_search(value->data(), std::regex(regex))) {
         addRequestHeader("x-envoy-force-trace", "true");
         addRequestHeader("x-tagged", "true");
+        replaceRequestHeader("x-b3-sampled", "1");
         LOG_DEBUG("Added request header, x-envoy-force-trace");
         break;
       } else {
@@ -83,6 +92,13 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
+  auto result = getResponseHeaderPairs();
+  auto pairs = result->pairs();
+  for (const auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+  }
+
   // Sanity check this filter is installed and running.
   addResponseHeader("hello", "world");
 
