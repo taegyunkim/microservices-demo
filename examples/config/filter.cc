@@ -58,19 +58,14 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  auto tagged = getRequestHeader("x-tagged");
-  if (tagged->data() != nullptr && tagged->size() > 0) {
-    LOG_DEBUG("Already tagged");
-    return FilterHeadersStatus::Continue;
-  }
   for (const auto &header_regex : root_->header_regexes_) {
     auto value = getRequestHeader(header_regex.first);
     if (value->data() != nullptr && value->size() > 0) {
       const auto &regex = header_regex.second;
       if (std::regex_search(value->data(), std::regex(regex))) {
-        addRequestHeader("x-tagged", "true");
+        addRequestHeader("x-envoy-force-trace", "true");
         replaceRequestHeader("x-b3-sampled", "1");
-        LOG_DEBUG("Set x-b3-sampled to 1.");
+        LOG_DEBUG("Added request header, x-envoy-force-trace and x-b3-sampled");
         break;
       } else {
         LOG_DEBUG("Pattern: " + regex + ", value: " + value->toString());
