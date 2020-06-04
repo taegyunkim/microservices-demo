@@ -2,6 +2,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "filter.pb.h"
 #include "google/protobuf/util/json_util.h"
 #include "proxy_wasm_intrinsics.h"
 
@@ -9,6 +10,7 @@ class AddHeaderRootContext : public RootContext {
 public:
   explicit AddHeaderRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {}
+  bool onConfigure(size_t /* configuration_size */) override;
 };
 
 class AddHeaderContext : public Context {
@@ -28,25 +30,38 @@ static RegisterContextFactory
                               ROOT_FACTORY(AddHeaderRootContext),
                               "add_header_root_id");
 
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  if (getRequestHeader("x-wasm-trace-id")->data() == nullptr) {
-    addRequestHeader("x-wasm-trace-id", std::to_string(id()));
-  }
-  auto request_header_pairs = getRequestHeaderPairs()->pairs();
-  for (const auto &p : request_header_pairs) {
-    LOG_DEBUG(std::string(p.first) + " -> " + std::string(p.second));
-  }
+bool AddHeaderRootContext::onConfigure(size_t) {
+  auto conf = getConfiguration();
+  Config config;
 
+  google::protobuf::util::JsonParseOptions options;
+  options.case_insensitive_enum_parsing = true;
+  options.ignore_unknown_fields = false;
+
+  google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
+                                              options);
+  return true;
+}
+
+FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  auto result = getRequestHeaderPairs();
+  auto pairs = result->pairs();
+  for (const auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+  }
   return FilterHeadersStatus::Continue;
 }
 
 FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
-  addResponseHeader("hello", "world");
-
-  auto response_header_pairs = getResponseHeaderPairs()->pairs();
-  for (const auto &p : response_header_pairs) {
-    LOG_DEBUG(std::string(p.first) + " -> " + std::string(p.second));
+  auto result = getResponseHeaderPairs();
+  auto pairs = result->pairs();
+  for (const auto &p : pairs) {
+    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
   }
 
+  // Sanity check this filter is installed and running.
+  addResponseHeader("hello", "world");
   return FilterHeadersStatus::Continue;
 }
