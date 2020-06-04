@@ -1,4 +1,4 @@
-export * from "@solo-io/proxy-runtime/proxy";
+export * from "@solo-io/proxy-runtime/proxy"; // this exports the required functions for the proxy to interact with us.
 import {
   RootContext,
   Context,
