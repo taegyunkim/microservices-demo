@@ -57,11 +57,13 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
   if (getRequestHeader("x-wasm-trace-id")->data() == nullptr) {
     addRequestHeader("x-wasm-trace-id", std::to_string(id()));
   }
+  LOG_WARN("x-wasm-trace-id: " +
+           getRequestHeader("x-wasm-trace-id")->toString());
 
   std::string parent_span_id = getRequestHeader("x-wasm-span-id")->toString();
   std::string current_span_id =
       root_->name_ + std::to_string(root_->getNextSpanId());
-  addRequestHeader("x-wasm-span-id", current_span_id);
+  setRequestHeader("x-wasm-span-id", current_span_id);
 
   if (parent_span_id.empty()) {
     LOG_WARN("root: " + current_span_id);

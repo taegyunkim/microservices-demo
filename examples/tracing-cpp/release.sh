@@ -30,26 +30,26 @@ app_labels=($app_labels)
 #     echo "$i=>${app_labels[i]}"
 # done
 
-version_labels=$(kubectl get deployments -L version | awk '{print $6}' | sed '1d')
-version_labels=($version_labels)
+# version_labels=$(kubectl get deployments -L version | awk '{print $6}' | sed '1d')
+# version_labels=($version_labels)
 
 # for i in "${!version_labels[@]}"; do
 #     echo "$i=>${version_labels[i]}"
 # done
 
-if [ ${#app_labels[@]} != ${#version_labels[@]} ]; then
-    echo "something went wrong, number of labels are different"
-    exit 1
-fi
+# if [ ${#app_labels[@]} != ${#version_labels[@]} ]; then
+#     echo "something went wrong, number of labels are different"
+#     exit 1
+# fi
 
 for i in "${!app_labels[@]}"; do
-    command="wasme deploy istio ${filter_name} \
+    output="wasme ${command} istio ${filter_name} \
     --id=${id}\
     --namespace=${namespace}\
-    --labels=version=${version_labels[i]},app=${app_labels[i]}\
-    --config=\"{'name': '${app_labels[i]}-${version_labels[i]}'}\""
+    --labels=app=${app_labels[i]}\
+    --config=\"{'name': '${app_labels[i]}'}\""
 
-    echo $command
+    echo $output
 done
 
 # version_label=$(kubectl get deployments -L version | awk '{print $6}' | sed '1d')
