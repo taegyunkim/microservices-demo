@@ -64,21 +64,20 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
       const auto &regex = header_regex.second;
       if (std::regex_search(value->data(), std::regex(regex))) {
         addRequestHeader("x-envoy-force-trace", "true");
-        replaceRequestHeader("x-b3-sampled", "1");
-        LOG_DEBUG("Added request header, x-envoy-force-trace and x-b3-sampled");
+        LOG_WARN("Added request header, x-envoy-force-trace");
         break;
       } else {
-        LOG_DEBUG("Pattern: " + regex + ", value: " + value->toString());
+        LOG_WARN("Pattern: " + regex + ", value: " + value->toString());
       }
     } else {
-      LOG_DEBUG("Didn't find header " + header_regex.first);
+      LOG_WARN("Didn't find header " + header_regex.first);
     }
   }
 
   auto result = getRequestHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+    LOG_WARN(std::string(p.first) + std::string(" -> ") +
               std::string(p.second));
   }
 
@@ -89,7 +88,7 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   auto result = getResponseHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
+    LOG_WARN(std::string(p.first) + std::string(" -> ") +
               std::string(p.second));
   }
 
