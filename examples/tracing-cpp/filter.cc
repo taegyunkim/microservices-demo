@@ -11,6 +11,13 @@ public:
   explicit AddHeaderRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
+
+  unsigned long getNextSpanId() { return next_span_id_++; }
+
+  std::string name_;
+
+private:
+  unsigned long next_span_id_;
 };
 
 class AddHeaderContext : public Context {
@@ -25,6 +32,7 @@ public:
 private:
   AddHeaderRootContext *root_;
 };
+
 static RegisterContextFactory
     register_AddHeaderContext(CONTEXT_FACTORY(AddHeaderContext),
                               ROOT_FACTORY(AddHeaderRootContext),
@@ -40,15 +48,32 @@ bool AddHeaderRootContext::onConfigure(size_t) {
 
   google::protobuf::util::JsonStringToMessage(conf->toString(), &config,
                                               options);
+
+  name_ = config.name();
   return true;
 }
 
 FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+  if (getRequestHeader("x-wasm-trace-id")->data() == nullptr) {
+    addRequestHeader("x-wasm-trace-id", std::to_string(id()));
+  }
+
+  std::string parent_span_id = getRequestHeader("x-wasm-span-id")->toString();
+  std::string current_span_id =
+      root_->name_ + std::to_string(root_->getNextSpanId());
+  addRequestHeader("x-wasm-span-id", current_span_id);
+
+  if (parent_span_id.empty()) {
+    LOG_WARNING("root: " + current_span_id);
+  } else {
+    LOG_WARNING(parent_span_id + " -> " current_span_id);
+  }
+
   auto result = getRequestHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
-              std::string(p.second));
+    LOG_WARNING(std::string(p.first) + std::string(" -> ") +
+                std::string(p.second));
   }
   return FilterHeadersStatus::Continue;
 }
@@ -57,8 +82,8 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   auto result = getResponseHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_DEBUG(std::string(p.first) + std::string(" -> ") +
-              std::string(p.second));
+    LOG_WARNING(std::string(p.first) + std::string(" -> ") +
+                std::string(p.second));
   }
 
   // Sanity check this filter is installed and running.
