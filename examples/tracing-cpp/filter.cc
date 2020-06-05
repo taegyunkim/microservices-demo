@@ -63,12 +63,13 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
   std::string parent_span_id = getRequestHeader("x-wasm-span-id")->toString();
   std::string current_span_id =
       root_->name_ + std::to_string(root_->getNextSpanId());
-  setRequestHeader("x-wasm-span-id", current_span_id);
 
   if (parent_span_id.empty()) {
     LOG_WARN("root: " + current_span_id);
+    addRequestHeader("x-wasm-span-id", current_span_id);
   } else {
     LOG_WARN(parent_span_id + " -> " + current_span_id);
+    replaceRequestHeader("x-wasm-span-id", current_span_id);
   }
 
   auto result = getRequestHeaderPairs();
