@@ -50,7 +50,6 @@ for i in "${!app_labels[@]}"; do
     --config=\"{'name': '${app_labels[i]}-${version_labels[i]}'}\""
 
     echo $command
-    command
 done
 
 # version_label=$(kubectl get deployments -L version | awk '{print $6}' | sed '1d')
