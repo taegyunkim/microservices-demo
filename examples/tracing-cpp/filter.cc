@@ -64,16 +64,16 @@ FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
   addRequestHeader("x-wasm-span-id", current_span_id);
 
   if (parent_span_id.empty()) {
-    LOG_WARNING("root: " + current_span_id);
+    LOG_WARN("root: " + current_span_id);
   } else {
-    LOG_WARNING(parent_span_id + " -> " current_span_id);
+    LOG_WARN(parent_span_id + " -> " + current_span_id);
   }
 
   auto result = getRequestHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_WARNING(std::string(p.first) + std::string(" -> ") +
-                std::string(p.second));
+    LOG_WARN(std::string(p.first) + std::string(" -> ") +
+             std::string(p.second));
   }
   return FilterHeadersStatus::Continue;
 }
@@ -82,8 +82,8 @@ FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
   auto result = getResponseHeaderPairs();
   auto pairs = result->pairs();
   for (const auto &p : pairs) {
-    LOG_WARNING(std::string(p.first) + std::string(" -> ") +
-                std::string(p.second));
+    LOG_WARN(std::string(p.first) + std::string(" -> ") +
+             std::string(p.second));
   }
 
   // Sanity check this filter is installed and running.
