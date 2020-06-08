@@ -16,6 +16,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-cart
+  labels:
+    name: redis-cart
 spec:
   selector:
     matchLabels:
