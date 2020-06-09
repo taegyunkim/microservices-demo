@@ -103,3 +103,18 @@ func ensureSessionID(next http.Handler) http.HandlerFunc {
 		next.ServeHTTP(w, r)
 	}
 }
+
+type ctxKeyWasmPath struct{}
+
+func ensureWasmHeaders(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		var wasmPath string = r.Header.Get("x-wasm-path")
+		if wasmPath != "" {
+			ctx = context.WithValue(ctx, ctxKeyWasmPath{}, wasmPath)
+		}
+
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	}
+}

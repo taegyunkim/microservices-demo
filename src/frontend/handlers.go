@@ -448,6 +448,14 @@ func cartSize(c []*pb.CartItem) int {
 	return cartSize
 }
 
+func wasmPath(r *http.Request) string {
+	v := r.Context().Value(ctxKeyWasmPath{})
+	if v != nil {
+		return v.(string)
+	}
+	return ""
+}
+
 func renderMoney(money pb.Money) string {
 	return fmt.Sprintf("%s %d.%02d", money.GetCurrencyCode(), money.GetUnits(), money.GetNanos()/10000000)
 }
