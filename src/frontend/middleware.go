@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/metadata"
 )
 
 type ctxKeyLog struct{}
@@ -109,11 +110,12 @@ type ctxKeyWasmPath struct{}
 func ensureWasmHeaders(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		log := ctx.Value(ctxKeyLog{}).(logrus.FieldLogger)
 		var wasmPath string = r.Header.Get("x-wasm-path")
+		log.Warnf("x-wasm-path %s", wasmPath)
 		if wasmPath != "" {
-			ctx = context.WithValue(ctx, ctxKeyWasmPath{}, wasmPath)
+			ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath)
 		}
-
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	}
