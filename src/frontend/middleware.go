@@ -107,7 +107,7 @@ func ensureSessionID(next http.Handler) http.HandlerFunc {
 
 type ctxKeyWasmPath struct{}
 
-func ensureWasmHeaders(next http.Handler) http.HandlerFunc {
+func propagateWasmHeaders(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		log := ctx.Value(ctxKeyLog{}).(logrus.FieldLogger)
