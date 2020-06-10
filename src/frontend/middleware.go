@@ -110,9 +110,7 @@ type ctxKeyWasmPath struct{}
 func propagateWasmHeaders(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		log := ctx.Value(ctxKeyLog{}).(logrus.FieldLogger)
 		var wasmPath string = r.Header.Get("x-wasm-path")
-		log.Warnf("x-wasm-path %s", wasmPath)
 		if wasmPath != "" {
 			ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath)
 		}
