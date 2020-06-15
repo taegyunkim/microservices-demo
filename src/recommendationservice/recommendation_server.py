@@ -65,9 +65,16 @@ def initStackdriverProfiling():
 
 class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
     def ListRecommendations(self, request, context):
+        wasm_header = ""
+        for key, value in context.invocation_metadata():
+            if key == "x-wasm-path":
+                wasm_header = value
+                break
+
         max_responses = 5
         # fetch list of products from product catalog stub
-        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty())
+        cat_response = product_catalog_stub.ListProducts(
+            demo_pb2.Empty(), metadata=(('x-wasm-path', wasm_header))
         product_ids = [x.id for x in cat_response.products]
         filtered_products = list(set(product_ids)-set(request.product_ids))
         num_products = len(filtered_products)
@@ -85,7 +92,6 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
     def Check(self, request, context):
         return health_pb2.HealthCheckResponse(
             status=health_pb2.HealthCheckResponse.SERVING)
-
 
 if __name__ == "__main__":
     logger.info("initializing recommendationservice")
