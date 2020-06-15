@@ -68,12 +68,11 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
         wasm_header = ""
         for key, value in context.invocation_metadata():
             if key == "x-wasm-path":
-                wasm_header = value
+                logger.warn("x-wasm-path type: %s, value: %s", type(value), repr(value))
                 break
-        metadata = (('x-wasm-path', wasm_header)) if wasm_header != "" else ()
         max_responses = 5
         # fetch list of products from product catalog stub
-        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty(), metadata=metadata)
+        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty())
         product_ids = [x.id for x in cat_response.products]
         filtered_products = list(set(product_ids)-set(request.product_ids))
         num_products = len(filtered_products)
