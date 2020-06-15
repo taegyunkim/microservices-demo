@@ -65,14 +65,16 @@ def initStackdriverProfiling():
 
 class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
     def ListRecommendations(self, request, context):
-        wasm_header = ""
+        wasm_header = None
         for key, value in context.invocation_metadata():
             if key == "x-wasm-path":
                 logger.warn("x-wasm-path type: %s, value: %s", type(value), repr(value))
+                wasm_header = value
                 break
+        metadata = (("x-wasm-path", wasm_header),) if wasm_header is not None else None
         max_responses = 5
         # fetch list of products from product catalog stub
-        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty())
+        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty(), metadata=metadata)
         product_ids = [x.id for x in cat_response.products]
         filtered_products = list(set(product_ids)-set(request.product_ids))
         num_products = len(filtered_products)
