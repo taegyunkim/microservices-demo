@@ -70,11 +70,10 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
             if key == "x-wasm-path":
                 wasm_header = value
                 break
-
+        metadata = (('x-wasm-path', wasm_header)) if wasm_header != "" else ()
         max_responses = 5
         # fetch list of products from product catalog stub
-        cat_response = product_catalog_stub.ListProducts(
-            demo_pb2.Empty(), metadata=(('x-wasm-path', wasm_header)))
+        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty(), metadata=metadata)
         product_ids = [x.id for x in cat_response.products]
         filtered_products = list(set(product_ids)-set(request.product_ids))
         num_products = len(filtered_products)
