@@ -24,11 +24,13 @@ import googleclouddebugger
 import googlecloudprofiler
 from google.auth.exceptions import DefaultCredentialsError
 import grpc
+from opencensus.common.transports.async_ import AsyncTransport
 from opencensus.trace.exporters import print_exporter
 from opencensus.trace.exporters import stackdriver_exporter
+from opencensus.trace.ext.grpc import client_interceptor
 from opencensus.trace.ext.grpc import server_interceptor
-from opencensus.common.transports.async_ import AsyncTransport
 from opencensus.trace.samplers import always_on
+from opencensus.trace.tracer import Tracer
 
 import demo_pb2
 import demo_pb2_grpc
@@ -83,8 +85,7 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
                     ) if wasm_header is not None else None
         max_responses = 5
         # fetch list of products from product catalog stub
-        cat_response = product_catalog_stub.ListProducts(
-            demo_pb2.Empty(), metadata=metadata)
+        cat_response = product_catalog_stub.ListProducts(demo_pb2.Empty())
         product_ids = [x.id for x in cat_response.products]
         filtered_products = list(set(product_ids)-set(request.product_ids))
         num_products = len(filtered_products)
@@ -117,6 +118,7 @@ if __name__ == "__main__":
     except KeyError:
         logger.info("Profiler disabled.")
 
+    tracer = None
     try:
         if "DISABLE_TRACING" in os.environ:
             raise KeyError()
@@ -128,6 +130,8 @@ if __name__ == "__main__":
                 transport=AsyncTransport)
             tracer_interceptor = server_interceptor.OpenCensusServerInterceptor(
                 sampler, exporter)
+            tracer = Tracer(exporter=exporter)
+
     except (KeyError, DefaultCredentialsError):
         logger.info("Tracing disabled.")
         tracer_interceptor = server_interceptor.OpenCensusServerInterceptor()
@@ -155,7 +159,12 @@ if __name__ == "__main__":
         raise Exception(
             'PRODUCT_CATALOG_SERVICE_ADDR environment variable not set')
     logger.info("product catalog address: " + catalog_addr)
+
+    client_tracer_interceptor = client_interceptor.OpenCensusClientInterceptor(
+        tracer=tracer, host_port=catalog_addr
+    )
     channel = grpc.insecure_channel(catalog_addr)
+    channel = grpc.intercept_channel(channel, client_tracer_interceptor)
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(channel)
 
     # create gRPC server
