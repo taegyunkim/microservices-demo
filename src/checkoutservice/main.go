@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/metadata"
 
 	pb "github.com/GoogleCloudPlatform/microservices-demo/src/checkoutservice/genproto"
 	money "github.com/GoogleCloudPlatform/microservices-demo/src/checkoutservice/money"
@@ -215,13 +216,24 @@ func (cs *checkoutService) Watch(req *healthpb.HealthCheckRequest, ws healthpb.H
 	return status.Errorf(codes.Unimplemented, "health check via Watch not implemented")
 }
 
+
 func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
 	log.Infof("[PlaceOrder] user_id=%q user_currency=%q", req.UserId, req.UserCurrency)
-
+	
 	orderID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to generate order uuid")
 	}
+	
+	// Start of added wasm code
+	md, _ := metadata.FromIncomingContext(ctx)
+	wasmPath := md.Get("x-wasm-path")
+	if len(wasmPath) > 0 {	// we need to get the string from the list
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath[0])
+	}
+	
+	// End of added wasm code
+
 
 	prep, err := cs.prepareOrderItemsAndShippingQuoteFromCart(ctx, req.UserId, req.UserCurrency, req.Address)
 	if err != nil {
@@ -235,6 +247,14 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	for _, it := range prep.orderItems {
 		total = money.Must(money.Sum(total, *it.Cost))
 	}
+	// Start of added wasm code
+	md, _ = metadata.FromIncomingContext(ctx)
+	wasmPath = md.Get("x-wasm-path")
+	if len(wasmPath) > 0 {	// we need to get the string from the list
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath[0])
+	}
+	
+	// End of added wasm code
 
 	txID, err := cs.chargeCard(ctx, &total, req.CreditCard)
 	if err != nil {
@@ -242,6 +262,15 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	}
 	log.Infof("payment went through (transaction_id: %s)", txID)
 
+	// Start of added wasm code
+	md, _ = metadata.FromIncomingContext(ctx)
+	wasmPath = md.Get("x-wasm-path")
+	if len(wasmPath) > 0 {	// we need to get the string from the list
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath[0])
+	}
+	
+	// End of added wasm code
+	
 	shippingTrackingID, err := cs.shipOrder(ctx, req.Address, prep.cartItems)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "shipping error: %+v", err)
@@ -257,11 +286,21 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 		Items:              prep.orderItems,
 	}
 
+	// Start of added wasm code
+	md, _ = metadata.FromIncomingContext(ctx)
+	wasmPath = md.Get("x-wasm-path")
+	if len(wasmPath) > 0 {	// we need to get the string from the list
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-wasm-path", wasmPath[0])
+	}
+	
+	// End of added wasm code
 	if err := cs.sendOrderConfirmation(ctx, req.Email, orderResult); err != nil {
 		log.Warnf("failed to send order confirmation to %q: %+v", req.Email, err)
 	} else {
 		log.Infof("order confirmation email sent to %q", req.Email)
 	}
+
+	
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
 	return resp, nil
 }
